@@ -96,26 +96,21 @@ export default function ItemForm() {
         itemId = data.id
       }
 
-      if (validPrices.length > 0) {
+if (validPrices.length > 0) {
+        // 1. Siapkan datanya
         const rows = validPrices.map((p) => {
-          const rowData = {
+          return {
+            id: p.id, // Bawa id-nya (bisa berisi UUID asli atau null untuk data baru)
             item_id: itemId,
             unit_label: (p.unit_label || 'pcs').trim(),
             unit_quantity: Number(p.unit_quantity) > 0 ? Number(p.unit_quantity) : 1,
             price: Number(p.price),
             is_default: Boolean(p.is_default),
           }
-          // Tambahkan logika ini: Jika baris harga sudah punya ID dari database, sertakan agar bisa di-update
-          if (p.id) {
-            rowData.id = p.id
-          }
-          return rowData
         })
-        
-        // pastikan tepat satu default (kalau tidak ada yang dicentang, jadikan baris pertama default)
+
+        // 2. Pastikan tepat satu baris menjadi default
         if (!rows.some((r) => r.is_default)) rows[0].is_default = true
-        
-        // kalau lebih dari satu tercentang default, sisakan hanya yang pertama
         let defaultSeen = false
         for (const r of rows) {
           if (r.is_default) {
@@ -124,9 +119,21 @@ export default function ItemForm() {
           }
         }
 
-// UBAH .insert() MENJADI .upsert()
-        const { error: insertErr } = await supabase.from('item_prices').upsert(rows)
-        if (insertErr) throw new Error('Gagal menyimpan harga: ' + insertErr.message)
+        // 3. Pisahkan antara harga lama (Update) dan harga baru (Insert)
+        const pricesToUpdate = rows.filter(r => r.id !== null && r.id !== undefined)
+        // Untuk harga baru, buang properti 'id' agar Supabase otomatis membuatkan ID baru
+        const pricesToInsert = rows.filter(r => r.id === null || r.id === undefined).map(({ id, ...rest }) => rest) 
+
+        // 4. Eksekusi perintah ke database secara terpisah
+        if (pricesToUpdate.length > 0) {
+          const { error: upsertErr } = await supabase.from('item_prices').upsert(pricesToUpdate)
+          if (upsertErr) throw new Error('Gagal menyimpan pembaruan harga lama: ' + upsertErr.message)
+        }
+
+        if (pricesToInsert.length > 0) {
+          const { error: insertErr } = await supabase.from('item_prices').insert(pricesToInsert)
+          if (insertErr) throw new Error('Gagal menyimpan harga baru: ' + insertErr.message)
+        }
       }
 
       navigate(isEdit ? `/barang/${itemId}` : '/barang')
