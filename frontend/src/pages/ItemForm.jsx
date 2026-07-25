@@ -84,8 +84,8 @@ export default function ItemForm() {
           .eq('id', id)
         if (updateErr) throw new Error('Gagal menyimpan data barang: ' + updateErr.message)
 
-        const { error: deleteErr } = await supabase.from('item_prices').delete().eq('item_id', id)
-        if (deleteErr) throw new Error('Gagal menghapus harga lama: ' + deleteErr.message)
+        //const { error: deleteErr } = await supabase.from('item_prices').delete().eq('item_id', id)
+        //if (deleteErr) throw new Error('Gagal menghapus harga lama: ' + deleteErr.message)
       } else {
         const { data, error } = await supabase
           .from('items')
