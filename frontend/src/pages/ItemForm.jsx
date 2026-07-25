@@ -11,7 +11,8 @@ export default function ItemForm() {
 
   const [name, setName] = useState('')
   const [locationId, setLocationId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState([])
+  const [newCategory, setNewCategory] = useState('')
   const [note, setNote] = useState('')
   const [prices, setPrices] = useState([{ ...emptyPriceRow(), is_default: true }])
   const [locations, setLocations] = useState([])
@@ -57,6 +58,20 @@ export default function ItemForm() {
     }
   }
 
+  async function addCategory() {
+      if (!newCategory.trim()) return
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ name: newCategory.trim() })
+        .select()
+        .single()
+      if (!error && data) {
+        setCategories((c) => [...c, data])
+        setSelectedCategories((prev) => [...prev, data.id]) // Langsung centang kategori baru
+        setNewCategory('')
+      }
+    }
+  
   function updatePriceRow(idx, patch) {
     setPrices((rows) => rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
   }
@@ -174,14 +189,38 @@ if (validPrices.length > 0) {
         </div>
       </Field>
 
-      <Field label="Jenis / Kategori (opsional)">
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="input">
-          <option value="">Belum dikategorikan</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-      </Field>
+      <Field label="Jenis / Kategori (bisa pilih banyak)">
+              <div className="flex flex-wrap gap-2 mb-2">
+                {categories.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 text-sm border border-border px-3 py-1.5 rounded-xl cursor-pointer hover:bg-surface-alt">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(c.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCategories((prev) => [...prev, c.id])
+                        } else {
+                          setSelectedCategories((prev) => prev.filter(id => id !== c.id))
+                        }
+                      }}
+                      className="accent-forest"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  placeholder="+ kategori baru"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="input flex-1 text-sm"
+                />
+                <button type="button" onClick={addCategory} className="px-3 rounded-xl border border-border text-sm text-text hover:bg-surface-alt">
+                  Tambah
+                </button>
+              </div>
+            </Field>
 
       <div>
         <div className="flex items-center justify-between mb-2">
