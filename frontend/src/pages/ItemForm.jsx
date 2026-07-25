@@ -48,9 +48,9 @@ export default function ItemForm() {
     setName(data.name)
     setNote(data.note ?? '')
     setLocationId(data.location_id ?? '')
-    // Load harga
+    
     setPrices(data.item_prices?.length ? data.item_prices : [{ ...emptyPriceRow(), is_default: true }])
-    // Load multi-kategori
+    
     if (data.item_categories) {
       setSelectedCategories(data.item_categories.map(ic => ic.category_id))
     }
@@ -67,18 +67,18 @@ export default function ItemForm() {
   }
 
   async function addCategory() {
-      if (!newCategory.trim()) return
-      const { data, error } = await supabase
-        .from('categories')
-        .insert({ name: newCategory.trim() })
-        .select()
-        .single()
-      if (!error && data) {
-        setCategories((c) => [...c, data])
-        setSelectedCategories((prev) => [...prev, data.id]) // Langsung centang kategori baru
-        setNewCategory('')
-      }
+    if (!newCategory.trim()) return
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({ name: newCategory.trim() })
+      .select()
+      .single()
+    if (!error && data) {
+      setCategories((c) => [...c, data])
+      setSelectedCategories((prev) => [...prev, data.id]) 
+      setNewCategory('')
     }
+  }
   
   function updatePriceRow(idx, patch) {
     setPrices((rows) => rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
@@ -106,9 +106,6 @@ export default function ItemForm() {
           .update({ name, note: note || null, location_id: locationId || null })
           .eq('id', id)
         if (updateErr) throw new Error('Gagal menyimpan data barang: ' + updateErr.message)
-
-        //const { error: deleteErr } = await supabase.from('item_prices').delete().eq('item_id', id)
-        //if (deleteErr) throw new Error('Gagal menghapus harga lama: ' + deleteErr.message)
       } else {
         const { data, error } = await supabase
           .from('items')
@@ -119,11 +116,10 @@ export default function ItemForm() {
         itemId = data.id
       }
 
-if (validPrices.length > 0) {
-        // 1. Siapkan datanya
+      if (validPrices.length > 0) {
         const rows = validPrices.map((p) => {
           return {
-            id: p.id, // Bawa id-nya (bisa berisi UUID asli atau null untuk data baru)
+            id: p.id, 
             item_id: itemId,
             unit_label: (p.unit_label || 'pcs').trim(),
             unit_quantity: Number(p.unit_quantity) > 0 ? Number(p.unit_quantity) : 1,
@@ -132,7 +128,6 @@ if (validPrices.length > 0) {
           }
         })
 
-        // 2. Pastikan tepat satu baris menjadi default
         if (!rows.some((r) => r.is_default)) rows[0].is_default = true
         let defaultSeen = false
         for (const r of rows) {
@@ -142,12 +137,9 @@ if (validPrices.length > 0) {
           }
         }
 
-        // 3. Pisahkan antara harga lama (Update) dan harga baru (Insert)
         const pricesToUpdate = rows.filter(r => r.id !== null && r.id !== undefined)
-        // Untuk harga baru, buang properti 'id' agar Supabase otomatis membuatkan ID baru
         const pricesToInsert = rows.filter(r => r.id === null || r.id === undefined).map(({ id, ...rest }) => rest) 
 
-        // 4. Eksekusi perintah ke database secara terpisah
         if (pricesToUpdate.length > 0) {
           const { error: upsertErr } = await supabase.from('item_prices').upsert(pricesToUpdate)
           if (upsertErr) throw new Error('Gagal menyimpan pembaruan harga lama: ' + upsertErr.message)
@@ -159,9 +151,7 @@ if (validPrices.length > 0) {
         }
       }
 
-      // --- LOGIKA SIMPAN KATEGORI ---
       if (isEdit) {
-        // Hapus relasi lama agar tidak menumpuk saat di-edit
         await supabase.from('item_categories').delete().eq('item_id', itemId)
       }
 
@@ -173,7 +163,7 @@ if (validPrices.length > 0) {
         const { error: catErr } = await supabase.from('item_categories').insert(categoryRows)
         if (catErr) throw new Error('Gagal menyimpan kategori: ' + catErr.message)
       }
-      // ------------------------------
+      
       navigate(isEdit ? `/barang/${itemId}` : '/barang')
     } catch (err) {
       alert(err.message || 'Terjadi kesalahan saat menyimpan.')
@@ -186,13 +176,13 @@ if (validPrices.length > 0) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-8">
       <h1 className="font-display text-2xl font-bold text-text">{isEdit ? 'Edit Barang' : 'Tambah Barang'}</h1>
 
-      <Field label="Nama Barang">
-        <input required value={name} onChange={(e) => setName(e.target.value)} className="input" />
+      <Field label="Nama Barang" htmlFor="itemName">
+        <input id="itemName" name="itemName" required value={name} onChange={(e) => setName(e.target.value)} className="input" />
       </Field>
 
-      <Field label="Lokasi">
+      <Field label="Lokasi" htmlFor="locationId">
         <div className="flex gap-2">
-          <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className="input flex-1">
+          <select id="locationId" name="locationId" value={locationId} onChange={(e) => setLocationId(e.target.value)} className="input flex-1">
             <option value="">Pilih lokasi</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>{l.name}</option>
@@ -201,6 +191,8 @@ if (validPrices.length > 0) {
         </div>
         <div className="flex gap-2 mt-2">
           <input
+            id="newLocation"
+            name="newLocation"
             placeholder="+ lokasi baru"
             value={newLocation}
             onChange={(e) => setNewLocation(e.target.value)}
@@ -213,37 +205,41 @@ if (validPrices.length > 0) {
       </Field>
 
       <Field label="Jenis / Kategori (bisa pilih banyak)">
-              <div className="flex flex-wrap gap-2 mb-2">
-                {categories.map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 text-sm border border-border px-3 py-1.5 rounded-xl cursor-pointer hover:bg-surface-alt">
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(c.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedCategories((prev) => [...prev, c.id])
-                        } else {
-                          setSelectedCategories((prev) => prev.filter(id => id !== c.id))
-                        }
-                      }}
-                      className="accent-forest"
-                    />
-                    {c.name}
-                  </label>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  placeholder="+ kategori baru"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="input flex-1 text-sm"
-                />
-                <button type="button" onClick={addCategory} className="px-3 rounded-xl border border-border text-sm text-text hover:bg-surface-alt">
-                  Tambah
-                </button>
-              </div>
-            </Field>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {categories.map((c) => (
+            <label key={c.id} htmlFor={`category_${c.id}`} className="flex items-center gap-1.5 text-sm border border-border px-3 py-1.5 rounded-xl cursor-pointer hover:bg-surface-alt">
+              <input
+                id={`category_${c.id}`}
+                name={`category_${c.id}`}
+                type="checkbox"
+                checked={selectedCategories.includes(c.id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedCategories((prev) => [...prev, c.id])
+                  } else {
+                    setSelectedCategories((prev) => prev.filter(id => id !== c.id))
+                  }
+                }}
+                className="accent-forest"
+              />
+              {c.name}
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            id="newCategory"
+            name="newCategory"
+            placeholder="+ kategori baru"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            className="input flex-1 text-sm"
+          />
+          <button type="button" onClick={addCategory} className="px-3 rounded-xl border border-border text-sm text-text hover:bg-surface-alt">
+            Tambah
+          </button>
+        </div>
+      </Field>
 
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -260,26 +256,32 @@ if (validPrices.length > 0) {
           {prices.map((row, idx) => (
             <div key={idx} className="grid grid-cols-[1fr_70px_1fr_auto] gap-2 items-center rounded-xl border border-border p-2.5">
               <input
+                id={`unit_label_${idx}`}
+                name={`unit_label_${idx}`}
                 placeholder="satuan (pcs/renceng/dus)"
                 value={row.unit_label}
                 onChange={(e) => updatePriceRow(idx, { unit_label: e.target.value })}
                 className="input text-sm py-2"
               />
               <input
+                id={`unit_quantity_${idx}`}
+                name={`unit_quantity_${idx}`}
                 type="number" min="1" placeholder="qty"
                 value={row.unit_quantity}
                 onChange={(e) => updatePriceRow(idx, { unit_quantity: Number(e.target.value) })}
                 className="input text-sm py-2"
               />
               <input
+                id={`price_${idx}`}
+                name={`price_${idx}`}
                 type="number" min="0" placeholder="harga (Rp)"
                 value={row.price}
                 onChange={(e) => updatePriceRow(idx, { price: e.target.value })}
                 className="input text-sm py-2"
               />
               <div className="flex items-center gap-1">
-                <label className="flex items-center gap-1 text-[10px] text-text-soft">
-                  <input type="radio" checked={row.is_default} onChange={() => setDefaultRow(idx)} />
+                <label htmlFor={`is_default_${idx}`} className="flex items-center gap-1 text-[10px] text-text-soft">
+                  <input id={`is_default_${idx}`} name={`is_default_${idx}`} type="radio" checked={row.is_default} onChange={() => setDefaultRow(idx)} />
                   utama
                 </label>
                 {prices.length > 1 && (
@@ -294,8 +296,8 @@ if (validPrices.length > 0) {
         </p>
       </div>
 
-      <Field label="Catatan (opsional)">
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} className="input" rows={3} />
+      <Field label="Catatan (opsional)" htmlFor="note">
+        <textarea id="note" name="note" value={note} onChange={(e) => setNote(e.target.value)} className="input" rows={3} />
       </Field>
 
       <button
@@ -324,9 +326,9 @@ if (validPrices.length > 0) {
   )
 }
 
-function Field({ label, children }) {
+function Field({ label, children, htmlFor }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label htmlFor={htmlFor} className="flex flex-col gap-1.5">
       <span className="text-sm font-medium text-text">{label}</span>
       {children}
     </label>
