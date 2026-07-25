@@ -37,15 +37,23 @@ export default function ItemForm() {
   async function loadItem() {
     const { data } = await supabase
       .from('items')
-      .select('name, note, location_id, category_id, item_prices ( id, unit_label, unit_quantity, price, is_default )')
+      .select(`
+        name, note, location_id, 
+        item_prices ( id, unit_label, unit_quantity, price, is_default ),
+        item_categories ( category_id )
+      `)
       .eq('id', id)
       .single()
     if (!data) return
     setName(data.name)
     setNote(data.note ?? '')
     setLocationId(data.location_id ?? '')
-    setCategoryId(data.category_id ?? '')
+    // Load harga
     setPrices(data.item_prices?.length ? data.item_prices : [{ ...emptyPriceRow(), is_default: true }])
+    // Load multi-kategori
+    if (data.item_categories) {
+      setSelectedCategories(data.item_categories.map(ic => ic.category_id))
+    }
   }
 
   async function addLocation() {
@@ -95,7 +103,7 @@ export default function ItemForm() {
       if (isEdit) {
         const { error: updateErr } = await supabase
           .from('items')
-          .update({ name, note: note || null, location_id: locationId || null, category_id: categoryId || null })
+          .update({ name, note: note || null, location_id: locationId || null })
           .eq('id', id)
         if (updateErr) throw new Error('Gagal menyimpan data barang: ' + updateErr.message)
 
@@ -104,7 +112,7 @@ export default function ItemForm() {
       } else {
         const { data, error } = await supabase
           .from('items')
-          .insert({ name, note: note || null, location_id: locationId || null, category_id: categoryId || null })
+          .insert({ name, note: note || null, location_id: locationId || null })
           .select()
           .single()
         if (error) throw new Error('Gagal menyimpan: ' + error.message)
@@ -151,6 +159,21 @@ if (validPrices.length > 0) {
         }
       }
 
+      // --- LOGIKA SIMPAN KATEGORI ---
+      if (isEdit) {
+        // Hapus relasi lama agar tidak menumpuk saat di-edit
+        await supabase.from('item_categories').delete().eq('item_id', itemId)
+      }
+
+      if (selectedCategories.length > 0) {
+        const categoryRows = selectedCategories.map(catId => ({
+          item_id: itemId,
+          category_id: catId
+        }))
+        const { error: catErr } = await supabase.from('item_categories').insert(categoryRows)
+        if (catErr) throw new Error('Gagal menyimpan kategori: ' + catErr.message)
+      }
+      // ------------------------------
       navigate(isEdit ? `/barang/${itemId}` : '/barang')
     } catch (err) {
       alert(err.message || 'Terjadi kesalahan saat menyimpan.')
