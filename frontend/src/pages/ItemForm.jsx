@@ -97,17 +97,25 @@ export default function ItemForm() {
       }
 
       if (validPrices.length > 0) {
-        const rows = validPrices.map((p) => ({
-          item_id: itemId,
-          unit_label: (p.unit_label || 'pcs').trim(),
-          unit_quantity: Number(p.unit_quantity) > 0 ? Number(p.unit_quantity) : 1,
-          price: Number(p.price),
-          is_default: Boolean(p.is_default),
-        }))
+        const rows = validPrices.map((p) => {
+          const rowData = {
+            item_id: itemId,
+            unit_label: (p.unit_label || 'pcs').trim(),
+            unit_quantity: Number(p.unit_quantity) > 0 ? Number(p.unit_quantity) : 1,
+            price: Number(p.price),
+            is_default: Boolean(p.is_default),
+          }
+          // Tambahkan logika ini: Jika baris harga sudah punya ID dari database, sertakan agar bisa di-update
+          if (p.id) {
+            rowData.id = p.id
+          }
+          return rowData
+        })
+        
         // pastikan tepat satu default (kalau tidak ada yang dicentang, jadikan baris pertama default)
         if (!rows.some((r) => r.is_default)) rows[0].is_default = true
-        // kalau lebih dari satu tercentang default (seharusnya tidak mungkin dari UI, tapi jaga-jaga),
-        // sisakan hanya yang pertama supaya tidak bentrok dengan unique constraint di database
+        
+        // kalau lebih dari satu tercentang default, sisakan hanya yang pertama
         let defaultSeen = false
         for (const r of rows) {
           if (r.is_default) {
@@ -116,7 +124,8 @@ export default function ItemForm() {
           }
         }
 
-        const { error: insertErr } = await supabase.from('item_prices').insert(rows)
+// UBAH .insert() MENJADI .upsert()
+        const { error: insertErr } = await supabase.from('item_prices').upsert(rows)
         if (insertErr) throw new Error('Gagal menyimpan harga: ' + insertErr.message)
       }
 
