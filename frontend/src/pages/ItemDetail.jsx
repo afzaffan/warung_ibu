@@ -11,16 +11,22 @@ export default function ItemDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function load() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('items')
       .select(`
         id, name, status, note,
         location:locations ( name ),
-        category:categories ( name ),
-        item_prices ( id, unit_label, unit_quantity, price, is_default )
+        item_prices ( id, unit_label, unit_quantity, price, is_default ),
+        item_categories ( category:categories ( name ) )
       `)
       .eq('id', id)
       .single()
+      
+    if (error) {
+      console.error(error)
+      return
+    }
+    
     setItem(data)
   }
 
@@ -42,6 +48,11 @@ export default function ItemDetail() {
   if (!item) return <p className="text-sm text-text-soft">Memuat...</p>
 
   const prices = [...(item.item_prices ?? [])].sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
+  
+  // Format array kategori menjadi satu string yang dipisahkan dengan koma
+  const categoriesText = item.item_categories?.length > 0
+    ? item.item_categories.map(ic => ic.category?.name).filter(Boolean).join(', ')
+    : ''
 
   return (
     <div className="flex flex-col gap-5">
@@ -53,7 +64,7 @@ export default function ItemDetail() {
             <h1 className="font-display text-xl font-bold text-text">{item.name}</h1>
             <p className="text-sm text-text-soft mt-1.5">
               {item.location?.name ?? 'Tanpa lokasi'}
-              {item.category?.name ? ` · ${item.category.name}` : ''}
+              {categoriesText ? ` · ${categoriesText}` : ''}
             </p>
           </div>
           <StatusBadge status={item.status} onClick={toggleStatus} />
