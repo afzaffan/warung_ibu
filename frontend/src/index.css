@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+@theme {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --color-paper: #F4F5EE;
+  --color-paper-dark: #141812;
+  --color-ink: #17231C;
+  --color-ink-soft: #4A5A50;
+  --color-forest: #1F3D2B;
+  --color-forest-light: #2F5A3F;
+  --color-mustard: #D9A441;
+  --color-mustard-soft: #F1DFAF;
+  --color-brick: #B4543E;
+  --color-line: #DDE1D4;
+}
+
+html { font-family: var(--font-body); }
+body { background: var(--color-paper); color: var(--color-ink); }
+.dark body { background: var(--color-paper-dark); color: #ECEFE6; }
+
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Signature element: price-tag chip with a punched-hole notch, seperti gantungan harga di warung */
+.price-tag {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 0.25rem 0.75rem 0.25rem 1.1rem;
+  background: var(--color-mustard-soft);
+  color: var(--color-forest);
+  border-radius: 4px 10px 10px 4px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.dark .price-tag { background: #3A331B; color: var(--color-mustard); }
+.price-tag::before {
+  content: '';
+  position: absolute;
+  left: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-paper);
+}
+.dark .price-tag::before { background: var(--color-paper-dark); }
