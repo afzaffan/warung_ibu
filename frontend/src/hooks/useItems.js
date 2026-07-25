@@ -11,13 +11,13 @@ export function useItems() {
   const reload = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data, error } = await supabase
+  const { data, error } = await supabase
       .from('items')
       .select(`
         id, name, status, note, created_at,
         location:locations ( id, name ),
-        category:categories ( id, name ),
-        item_prices ( id, unit_label, unit_quantity, price, is_default )
+        item_prices ( id, unit_label, unit_quantity, price, is_default ),
+        item_categories ( category:categories ( id, name ) )
       `)
       .order('name', { ascending: true })
 
